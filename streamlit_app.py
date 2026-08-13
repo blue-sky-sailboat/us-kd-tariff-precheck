@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-import hmac
+import csv
 import json
 from datetime import datetime
 from html import escape
@@ -13,9 +13,20 @@ import pandas as pd
 import streamlit as st
 from google import genai
 
+from access_control import (
+    ROLES,
+    ROLE_SUMMARIES,
+    can_access_page,
+    can_perform,
+    pages_for_role,
+)
+from classification_engine import evaluate_item, load_hts_index
+
 
 APP_DIR = Path(__file__).parent
 OFFICIAL_DATA_FILE = APP_DIR / "data" / "official-data.json"
+HTS_DATA_FILE = APP_DIR / "data" / "hts_2025_revision_32.csv"
+SAMPLE_SHIPMENT_FILE = APP_DIR / "public" / "선적자료_예제.csv"
 GEMINI_DEFAULT_MODEL = "gemini-3.6-flash"
 
 
@@ -121,7 +132,6 @@ st.markdown(
       .side-context:has(span:last-child:not(:empty)) { display:block; }
       .side-context span:last-child:not(:empty) { display:block; width:auto; height:auto; margin-top:.28rem; color:#94a3b8;
         background:none; box-shadow:none; font-size:.6rem; font-weight:600; line-height:1.45; overflow-wrap:anywhere; }
-      .nav-kicker { display:none!important; }
       .system-box { margin-top:.15rem; padding:.78rem; border:1px solid rgba(71,85,105,.55); border-radius:.8rem;
         background:rgba(2,6,23,.55); box-shadow:inset 0 1px rgba(255,255,255,.03); }
       .system-line { display:flex; align-items:center; justify-content:space-between; color:#cbd5e1; font-size:.67rem; font-weight:800; }
@@ -218,7 +228,48 @@ st.markdown(
       .stTabs [aria-selected="true"] { color:#075985!important; background:#f0f9ff!important; }
       [data-testid="stChatMessage"] { background:white; border:1px solid #e2e8f0; border-radius:.9rem; padding:.5rem .8rem; }
       [data-testid="stChatInput"] { border-radius:.8rem; box-shadow:0 7px 24px rgba(15,23,42,.08); }
-      body,.stApp { font-size:16px; } .stMarkdown p,[data-testid="stCaptionContainer"],[data-testid="stAlert"] p { font-size:.86rem; line-height:1.65; word-break:keep-all; overflow-wrap:anywhere; } [data-testid="stWidgetLabel"] p { font-size:.8rem; line-height:1.45; } [data-baseweb="input"] input,[data-baseweb="textarea"] textarea,[data-baseweb="select"] > div { font-size:.84rem; } [data-testid="stSidebar"] .stSelectbox label,[data-testid="stSidebar"] .stRadio > label { font-size:.72rem!important; } [data-testid="stSidebar"] div[role="radiogroup"] label p { font-size:.79rem!important; line-height:1.35; } [data-testid="stSidebar"] [data-baseweb="select"] > div { font-size:.82rem; } .brand-name { font-size:.88rem; } .brand-sub { font-size:.73rem; } .side-context { font-size:.75rem; line-height:1.45; } .side-context span:last-child:not(:empty) { font-size:.67rem; } .system-line { font-size:.73rem; } .system-chip { font-size:.68rem; } .topbar-title { font-size:1rem; white-space:nowrap; } .topbar-pill,.topbar-role { font-size:.72rem; white-space:nowrap; } .hero-eyebrow { font-size:.68rem; } .hero h1 { font-size:1.55rem; line-height:1.3; word-break:keep-all; overflow-wrap:anywhere; } .hero p { font-size:.86rem; line-height:1.65; word-break:keep-all; overflow-wrap:anywhere; } .kpi-label { font-size:.77rem; word-break:keep-all; overflow-wrap:anywhere; } .kpi-value { font-size:1.62rem; } .kpi-sub { font-size:.72rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; } .section-head h3 { font-size:1.04rem!important; } .section-head p { font-size:.76rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; } .workflow-num { font-size:.64rem; } .workflow-title { font-size:.77rem; line-height:1.4; word-break:keep-all; } .workflow-desc { font-size:.66rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; } .entry-chip { font-size:.65rem; } .shipment-title { font-size:.86rem; line-height:1.45; word-break:keep-all; overflow-wrap:anywhere; } .meta-label { font-size:.63rem; } .meta-value { font-size:.72rem; } .badge { font-size:.66rem; } .info-strip { font-size:.76rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; } .status-ok,.status-warn { font-size:.75rem; } .app-footer { font-size:.69rem; line-height:1.55; } [data-testid="stMetricLabel"] p { font-size:.78rem; } [data-testid="stMetricValue"] { font-size:1.65rem; } .stButton > button,.stDownloadButton > button,.stFormSubmitButton > button { font-size:.82rem; } .stTabs [data-baseweb="tab"] { font-size:.8rem; }
+
+      /* Readability scale and predictable Korean wrapping */
+      body,.stApp { font-size:16px; }
+      .stMarkdown p,[data-testid="stCaptionContainer"],[data-testid="stAlert"] p {
+        font-size:.86rem; line-height:1.65; word-break:keep-all; overflow-wrap:anywhere;
+      }
+      [data-testid="stWidgetLabel"] p { font-size:.8rem; line-height:1.45; }
+      [data-baseweb="input"] input,[data-baseweb="textarea"] textarea,[data-baseweb="select"] > div { font-size:.84rem; }
+      [data-testid="stSidebar"] .stSelectbox label,[data-testid="stSidebar"] .stRadio > label { font-size:.72rem!important; }
+      [data-testid="stSidebar"] div[role="radiogroup"] label p { font-size:.79rem!important; line-height:1.35; }
+      [data-testid="stSidebar"] [data-baseweb="select"] > div { font-size:.82rem; }
+      .brand-name { font-size:.88rem; }
+      .brand-sub { font-size:.73rem; }
+      .side-context { font-size:.75rem; line-height:1.45; }
+      .side-context span:last-child:not(:empty) { font-size:.67rem; }
+      .system-line { font-size:.73rem; }
+      .system-chip { font-size:.68rem; }
+      .topbar-title { font-size:1rem; white-space:nowrap; }
+      .topbar-pill,.topbar-role { font-size:.72rem; white-space:nowrap; }
+      .hero-eyebrow { font-size:.68rem; }
+      .hero h1 { font-size:1.55rem; line-height:1.3; word-break:keep-all; overflow-wrap:anywhere; }
+      .hero p { font-size:.86rem; line-height:1.65; word-break:keep-all; overflow-wrap:anywhere; }
+      .kpi-label { font-size:.77rem; word-break:keep-all; overflow-wrap:anywhere; }
+      .kpi-value { font-size:1.62rem; }
+      .kpi-sub { font-size:.72rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; }
+      .section-head h3 { font-size:1.04rem!important; }
+      .section-head p { font-size:.76rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; }
+      .workflow-num { font-size:.64rem; }
+      .workflow-title { font-size:.77rem; line-height:1.4; word-break:keep-all; }
+      .workflow-desc { font-size:.66rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; }
+      .entry-chip { font-size:.65rem; }
+      .shipment-title { font-size:.86rem; line-height:1.45; word-break:keep-all; overflow-wrap:anywhere; }
+      .meta-label { font-size:.63rem; }
+      .meta-value { font-size:.72rem; }
+      .badge { font-size:.66rem; }
+      .info-strip { font-size:.76rem; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; }
+      .status-ok,.status-warn { font-size:.75rem; }
+      .app-footer { font-size:.69rem; line-height:1.55; }
+      [data-testid="stMetricLabel"] p { font-size:.78rem; }
+      [data-testid="stMetricValue"] { font-size:1.65rem; }
+      .stButton > button,.stDownloadButton > button,.stFormSubmitButton > button { font-size:.82rem; }
+      .stTabs [data-baseweb="tab"] { font-size:.8rem; }
 
       @media (max-width:1100px) {
         .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -238,9 +289,13 @@ st.markdown(
         .kpi-card { min-height:auto; }
         .workflow { grid-template-columns:1fr; }
         .shipment-meta { grid-template-columns:1fr 1fr; }
-        .section-head { align-items:flex-start; flex-direction:column; gap:.25rem; } .info-strip { align-items:flex-start; flex-direction:column; gap:.35rem; } .shipment-top { flex-direction:column; gap:.5rem; }
+        .section-head { align-items:flex-start; flex-direction:column; gap:.25rem; }
+        .info-strip { align-items:flex-start; flex-direction:column; gap:.35rem; }
+        .shipment-top { flex-direction:column; gap:.5rem; }
       }
-      @media (max-width:420px) { .shipment-meta { grid-template-columns:1fr; } }
+      @media (max-width:420px) {
+        .shipment-meta { grid-template-columns:1fr; }
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -253,6 +308,14 @@ def load_official_data() -> dict[str, Any]:
         return json.loads(OFFICIAL_DATA_FILE.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {"dataset": {}, "sources": [], "notices": [], "htsChanges": []}
+
+
+@st.cache_data
+def load_official_hts_index() -> dict[str, dict[str, Any]]:
+    try:
+        return load_hts_index(HTS_DATA_FILE)
+    except (OSError, csv.Error):
+        return {}
 
 
 DEMO_SHIPMENTS = [
@@ -339,6 +402,11 @@ def selected_shipment() -> dict[str, Any]:
         (s for s in st.session_state.shipments if s["entryNumber"] == st.session_state.selected_entry),
         st.session_state.shipments[0],
     )
+
+
+def active_role() -> str:
+    role = str(st.session_state.get("role", ROLES[0]))
+    return role if role in ROLES else ROLES[0]
 
 
 def topbar(page: str, role: str, official_count: int) -> None:
@@ -503,6 +571,7 @@ def items_report_frame(shipment: dict[str, Any]) -> pd.DataFrame:
             "관세차액": item.get("dutyDifferenceUsd", 0),
             "위험도": item.get("riskLevel", ""),
             "PSC 후보": "예" if item.get("pscRequired") else "아니오",
+            "판정 주체": item.get("decisionSource", "기존 저장값"),
             "판정 근거": item.get("ruleCitation", ""),
         })
     return pd.DataFrame(rows)
@@ -609,24 +678,35 @@ def parse_upload(uploaded_file: Any) -> dict[str, Any]:
 def page_shipments() -> None:
     hero("통관 신고서 관리", "CSV 신고자료를 등록하고 품목별 HTS 검토 상태를 확인합니다.")
     st.markdown('<div class="info-strip"><span>신고서 등록 → 품목 형식 확인 → 사전 분석 실행</span><span>CSV · 최대 20MB</span></div>', unsafe_allow_html=True)
-    with st.expander("CSV 신고자료 업로드", expanded=False):
-        st.caption("등록양식: public/선적자료_등록양식.csv")
-        uploaded = st.file_uploader("신고자료 CSV", type=["csv"])
-        parsed_shipment = None
-        if uploaded:
-            try:
-                parsed_shipment = parse_upload(uploaded)
-                st.success(f"형식 확인 완료 · {parsed_shipment['entryNumber']} · {len(parsed_shipment['items'])}개 품목")
-                st.dataframe(items_report_frame(parsed_shipment).head(5), width="stretch", hide_index=True)
-            except Exception as exc:
-                st.error(f"CSV를 읽지 못했습니다: {exc}")
-        if parsed_shipment and st.button("확인한 신고서 등록", type="primary"):
-            existing = [s for s in st.session_state.shipments if s["entryNumber"] != parsed_shipment["entryNumber"]]
-            st.session_state.shipments = [parsed_shipment, *existing]
-            st.session_state.selected_entry = parsed_shipment["entryNumber"]
-            record_audit("신고서 등록", parsed_shipment["entryNumber"], f"{len(parsed_shipment['items'])}개 품목")
-            st.success("신고서를 등록했습니다.")
-            st.rerun()
+    if can_perform(active_role(), "upload_shipment"):
+        with st.expander("CSV 신고자료 업로드", expanded=False):
+            st.caption("필수 열과 입력 형식이 포함된 예제 파일을 내려받아 내용을 바꿔 사용하세요.")
+            if SAMPLE_SHIPMENT_FILE.exists():
+                st.download_button(
+                    "예제 CSV 다운로드",
+                    SAMPLE_SHIPMENT_FILE.read_bytes(),
+                    "선적자료_예제.csv",
+                    "text/csv",
+                    width="stretch",
+                )
+            uploaded = st.file_uploader("신고자료 CSV", type=["csv"])
+            parsed_shipment = None
+            if uploaded:
+                try:
+                    parsed_shipment = parse_upload(uploaded)
+                    st.success(f"형식 확인 완료 · {parsed_shipment['entryNumber']} · {len(parsed_shipment['items'])}개 품목")
+                    st.dataframe(items_report_frame(parsed_shipment).head(5), width="stretch", hide_index=True)
+                except Exception as exc:
+                    st.error(f"CSV를 읽지 못했습니다: {exc}")
+            if parsed_shipment and st.button("확인한 신고서 등록", type="primary"):
+                existing = [s for s in st.session_state.shipments if s["entryNumber"] != parsed_shipment["entryNumber"]]
+                st.session_state.shipments = [parsed_shipment, *existing]
+                st.session_state.selected_entry = parsed_shipment["entryNumber"]
+                record_audit("신고서 등록", parsed_shipment["entryNumber"], f"{len(parsed_shipment['items'])}개 품목")
+                st.success("신고서를 등록했습니다.")
+                st.rerun()
+    else:
+        st.info(f"{active_role()} 역할은 등록된 신고서를 조회할 수 있지만 CSV 신고자료를 등록할 수는 없습니다.")
 
     options = [s["entryNumber"] for s in st.session_state.shipments]
     current_index = options.index(st.session_state.selected_entry) if st.session_state.selected_entry in options else 0
@@ -655,39 +735,50 @@ def page_shipments() -> None:
         item_frame = item_frame[item_frame["위험도"].isin(risk_filter)]
     st.dataframe(item_frame, width="stretch", hide_index=True,
                  column_config={"신고가액": st.column_config.NumberColumn(format="$%.0f"), "관세차액": st.column_config.NumberColumn(format="$%.0f")})
-    download_left, download_right = st.columns(2)
-    download_left.download_button("품목 검토표 CSV", item_frame.to_csv(index=False).encode("utf-8-sig"), f"{shipment['entryNumber']}_items.csv", "text/csv", width="stretch")
-    download_right.download_button("사전검토 보고서", analysis_brief(shipment).encode("utf-8"), f"{shipment['entryNumber']}_brief.md", "text/markdown", width="stretch")
+    if can_perform(active_role(), "download_reports"):
+        download_left, download_right = st.columns(2)
+        download_left.download_button("품목 검토표 CSV", item_frame.to_csv(index=False).encode("utf-8-sig"), f"{shipment['entryNumber']}_items.csv", "text/csv", width="stretch")
+        download_right.download_button("사전검토 보고서", analysis_brief(shipment).encode("utf-8"), f"{shipment['entryNumber']}_brief.md", "text/markdown", width="stretch")
 
 
 def run_analysis(shipment: dict[str, Any], threshold: int) -> None:
     items = shipment["items"]
     for item in items:
-        confidence = float(item.get("confidenceScore", 0))
-        mismatch = item.get("recommendedHtsCode") != item.get("declaredHtsCode")
-        if mismatch or item.get("pscRequired") or (confidence and confidence < threshold):
-            item["riskLevel"] = "높음" if mismatch or item.get("pscRequired") else "보통"
-    risky = [i for i in items if i.get("riskLevel") in {"높음", "매우 높음"} or i.get("pscRequired")]
-    shipment["riskLevel"] = "높음" if risky else "낮음"
-    shipment["status"] = "검토 필요" if risky else "승인"
+        item.update(
+            evaluate_item(
+                item,
+                shipment,
+                official_hts_index,
+                threshold,
+                str(official_data.get("dataset", {}).get("currentVersion", "공식 HTS 판본")),
+            )
+        )
+    review_items = [i for i in items if i.get("riskLevel") in {"보통", "높음", "매우 높음"}]
+    risk_rank = {"낮음": 0, "보통": 1, "높음": 2, "매우 높음": 3}
+    shipment["riskLevel"] = max(
+        (str(i.get("riskLevel", "낮음")) for i in items),
+        key=lambda value: risk_rank.get(value, 0),
+        default="낮음",
+    )
+    shipment["status"] = "검토 필요" if review_items else "자동검증 완료"
     scores = [float(i.get("confidenceScore", 0)) for i in items if float(i.get("confidenceScore", 0)) > 0]
     st.session_state.analysis_runs.insert(0, {
         "실행시각": datetime.now().strftime("%Y-%m-%d %H:%M"), "신고번호": shipment["entryNumber"],
-        "품목 수": len(items), "검토 필요": len(risky), "PSC 후보": sum(bool(i.get("pscRequired")) for i in items),
+        "품목 수": len(items), "검토 필요": len(review_items), "PSC 후보": sum(bool(i.get("pscRequired")) for i in items),
         "평균 신뢰도": round(sum(scores) / len(scores), 1) if scores else 0,
         "예상 관세차액": shipment_totals(shipment)["gap"],
     })
-    record_audit("사전 분석", shipment["entryNumber"], f"검토 필요 {len(risky)}개")
+    record_audit("사전 분석", shipment["entryNumber"], f"검토 필요 {len(review_items)}개")
 
 
 def page_analysis() -> None:
-    hero("사전 분석 실행", "신고 HTS와 추천 HTS, 신뢰도, PSC 필요 여부를 기준으로 검토 대상을 선별합니다.")
-    st.markdown('<div class="info-strip"><span>분석 기준을 지정한 뒤 실행하면 검토 대상과 이력이 즉시 갱신됩니다.</span><span>Rule-based pre-check</span></div>', unsafe_allow_html=True)
+    hero("사전 분석 실행", "공식 HTS 판본으로 신고 코드와 기본세율을 검증하고 관세차액을 계산합니다.")
+    st.markdown('<div class="info-strip"><span>관세차액 = 신고가액 × (검토세율 − 신고세율) ÷ 100</span><span>공식표 자동검증 + 담당자 확정</span></div>', unsafe_allow_html=True)
     options = [s["entryNumber"] for s in st.session_state.shipments]
     entry = st.selectbox("분석할 신고서", options)
     threshold = st.slider("검토 신뢰도 기준", 50, 100, 85)
     shipment = next(s for s in st.session_state.shipments if s["entryNumber"] == entry)
-    if st.button("사전 분석 실행", type="primary", width="stretch"):
+    if can_perform(active_role(), "run_analysis") and st.button("사전 분석 실행", type="primary", width="stretch"):
         run_analysis(shipment, threshold)
         st.session_state.selected_entry = entry
         st.success("분석을 완료했습니다. 검토 대상과 관세차액을 확인해 주세요.")
@@ -698,6 +789,53 @@ def page_analysis() -> None:
         st.download_button("분석 이력 CSV", runs_frame.to_csv(index=False).encode("utf-8-sig"), "analysis_runs.csv", "text/csv")
     section_header("현재 품목 판정", "선택한 신고서의 품목별 사전검토 결과")
     st.dataframe(items_report_frame(shipment), width="stretch", hide_index=True)
+    if can_perform(active_role(), "manual_classification"):
+        with st.expander("담당자 판정 입력·수정"):
+            st.caption("미국 통관 담당자가 추천 HTS·총 검토세율·근거를 확정할 수 있습니다.")
+            item_numbers = [str(item["itemNumber"]) for item in shipment["items"]]
+            target_number = st.selectbox("판정할 품목", item_numbers, key=f"manual_item_{entry}")
+            target_item = next(item for item in shipment["items"] if str(item["itemNumber"]) == target_number)
+            manual = target_item.get("manualDecision") or {}
+            safe_key = f"{entry}_{target_number}".replace(" ", "_")
+            with st.form(f"manual_decision_{safe_key}"):
+                reviewer = st.text_input("판정 담당자", value=str(manual.get("reviewer", "")), key=f"reviewer_{safe_key}")
+                recommended_code = st.text_input(
+                    "추천 HTS",
+                    value=str(manual.get("recommendedHtsCode", target_item.get("recommendedHtsCode") or target_item.get("declaredHtsCode", ""))),
+                    key=f"recommended_{safe_key}",
+                )
+                reviewed_rate = st.number_input(
+                    "총 검토세율 (%)",
+                    min_value=0.0,
+                    max_value=500.0,
+                    value=float(manual.get("dutyRateCalculated", target_item.get("dutyRateCalculated", target_item.get("dutyRateDeclared", 0))) or 0),
+                    step=0.1,
+                    key=f"rate_{safe_key}",
+                )
+                basis = st.text_area("판정 근거", value=str(manual.get("ruleCitation", "")), placeholder="예: CBP Ruling 번호, HTS 주석, 관세사 검토 의견", key=f"basis_{safe_key}")
+                save_decision = st.form_submit_button("담당자 판정 저장", type="primary")
+                clear_decision = st.form_submit_button("담당자 판정 삭제")
+            if save_decision:
+                if not reviewer.strip() or not recommended_code.strip() or not basis.strip():
+                    st.error("판정 담당자, 추천 HTS, 판정 근거를 모두 입력해 주세요.")
+                else:
+                    target_item["manualDecision"] = {
+                        "reviewer": reviewer.strip(),
+                        "recommendedHtsCode": recommended_code.strip(),
+                        "dutyRateCalculated": float(reviewed_rate),
+                        "ruleCitation": basis.strip(),
+                        "decidedAt": datetime.now().isoformat(timespec="minutes"),
+                    }
+                    run_analysis(shipment, threshold)
+                    record_audit("담당자 판정", f"{entry}/{target_number}", reviewer.strip())
+                    st.success("담당자 판정을 저장하고 관세차액·위험도·PSC 후보를 다시 계산했습니다.")
+            elif clear_decision:
+                target_item.pop("manualDecision", None)
+                run_analysis(shipment, threshold)
+                record_audit("담당자 판정 삭제", f"{entry}/{target_number}", "자동검증으로 복원")
+                st.success("담당자 판정을 삭제하고 공식표 자동검증 결과로 복원했습니다.")
+    else:
+        st.info("추천 HTS와 총 검토세율의 담당자 확정은 미국 통관 역할에서만 입력할 수 있습니다.")
 
 
 def page_impact() -> None:
@@ -730,22 +868,25 @@ def page_reviews() -> None:
         f'<div class="info-strip"><span>활성 신고서 · <strong>{escape(shipment["entryNumber"])}</strong></span><span>검토 후보 {len(candidates)}개</span></div>',
         unsafe_allow_html=True,
     )
-    section_header("신규 검토 요청", "분류 근거 확인이 필요한 품목을 담당자에게 전달합니다.")
-    if candidates:
-        labels = [f"{i['itemNumber']} · {i['partNameKo'] or i['partNameEn']}" for i in candidates]
-        selected = st.selectbox("검토 품목", labels)
-        form_left, form_right = st.columns(2)
-        owner = form_left.selectbox("담당자", ["한국 수출 관리", "미국 통관", "원산지 검토"])
-        due_date = form_right.date_input("검토 기한")
-        reason = st.text_area("검토 사유", placeholder="분류 근거와 확인이 필요한 사항을 입력하세요.")
-        if st.button("검토 요청 생성", type="primary"):
-            item = candidates[labels.index(selected)]
-            review_id = f"REV-{datetime.now().strftime('%m%d%H%M%S')}"
-            st.session_state.reviews.insert(0, {"요청번호":review_id, "생성시각":datetime.now().strftime("%Y-%m-%d %H:%M"), "신고번호":shipment["entryNumber"], "품목":item["partNameKo"] or item["partNameEn"], "신고 HTS":item["declaredHtsCode"], "추천 HTS":item["recommendedHtsCode"], "담당자":owner, "검토기한":str(due_date), "상태":"대기", "사유":reason, "검토의견":""})
-            record_audit("검토 요청 생성", review_id, shipment["entryNumber"])
-            st.success("검토 요청을 생성했습니다.")
+    if can_perform(active_role(), "create_review"):
+        section_header("신규 검토 요청", "분류 근거 확인이 필요한 품목을 담당자에게 전달합니다.")
+        if candidates:
+            labels = [f"{i['itemNumber']} · {i['partNameKo'] or i['partNameEn']}" for i in candidates]
+            selected = st.selectbox("검토 품목", labels)
+            form_left, form_right = st.columns(2)
+            owner = form_left.selectbox("담당자", ["미국 통관", "원산지 검토"])
+            due_date = form_right.date_input("검토 기한")
+            reason = st.text_area("검토 사유", placeholder="분류 근거와 확인이 필요한 사항을 입력하세요.")
+            if st.button("검토 요청 생성", type="primary"):
+                item = candidates[labels.index(selected)]
+                review_id = f"REV-{datetime.now().strftime('%m%d%H%M%S')}"
+                st.session_state.reviews.insert(0, {"요청번호":review_id, "생성시각":datetime.now().strftime("%Y-%m-%d %H:%M"), "신고번호":shipment["entryNumber"], "품목":item["partNameKo"] or item["partNameEn"], "신고 HTS":item["declaredHtsCode"], "추천 HTS":item["recommendedHtsCode"], "담당자":owner, "검토기한":str(due_date), "상태":"대기", "사유":reason, "검토의견":""})
+                record_audit("검토 요청 생성", review_id, shipment["entryNumber"])
+                st.success("검토 요청을 생성했습니다.")
+        else:
+            st.info("현재 선택 신고서에는 정정 검토 후보가 없습니다.")
     else:
-        st.info("현재 선택 신고서에는 정정 검토 후보가 없습니다.")
+        st.info(f"{active_role()} 역할은 기존 검토 요청을 확인하고 처리할 수 있으며 신규 요청 생성은 한국 수출 관리 역할에서 담당합니다.")
     if st.session_state.reviews:
         section_header("검토 요청 목록", "담당자별 처리 상태와 기한을 확인합니다.")
         review_frame = pd.DataFrame(st.session_state.reviews)
@@ -753,18 +894,29 @@ def page_reviews() -> None:
         visible_reviews = review_frame if not status_filter else review_frame[review_frame["상태"].isin(status_filter)]
         st.dataframe(visible_reviews, width="stretch", hide_index=True)
         st.download_button("검토 요청 목록 CSV", visible_reviews.to_csv(index=False).encode("utf-8-sig"), "review_requests.csv", "text/csv")
-        section_header("검토 상태 처리", "선택한 요청의 상태와 검토 의견을 갱신합니다.")
-        review_ids = [review["요청번호"] for review in st.session_state.reviews]
-        target_id = st.selectbox("요청번호", review_ids)
-        target_review = next(review for review in st.session_state.reviews if review["요청번호"] == target_id)
-        status_options = ["대기", "검토 중", "승인", "반려", "PSC 완료"]
-        status = st.selectbox("변경 상태", status_options, index=status_options.index(target_review["상태"]))
-        comment = st.text_area("검토 의견", value=target_review.get("검토의견", ""), key=f"comment-{target_id}")
-        if st.button("상태 저장"):
-            target_review["상태"] = status
-            target_review["검토의견"] = comment
-            record_audit("검토 상태 변경", target_id, status)
-            st.success("검토 상태를 저장했습니다.")
+        if can_perform(active_role(), "update_review"):
+            actionable_reviews = [review for review in st.session_state.reviews if review.get("담당자") == active_role()]
+            if actionable_reviews:
+                section_header("검토 상태 처리", "현재 역할에 배정된 요청의 상태와 검토 의견을 갱신합니다.")
+                review_ids = [review["요청번호"] for review in actionable_reviews]
+                target_id = st.selectbox("요청번호", review_ids)
+                target_review = next(review for review in actionable_reviews if review["요청번호"] == target_id)
+                status_options = ["대기", "검토 중", "승인", "반려"]
+                if can_perform(active_role(), "complete_psc"):
+                    status_options.append("PSC 완료")
+                if target_review["상태"] not in status_options:
+                    status_options.append(target_review["상태"])
+                status = st.selectbox("변경 상태", status_options, index=status_options.index(target_review["상태"]))
+                comment = st.text_area("검토 의견", value=target_review.get("검토의견", ""), key=f"comment-{target_id}")
+                if st.button("상태 저장"):
+                    target_review["상태"] = status
+                    target_review["검토의견"] = comment
+                    record_audit("검토 상태 변경", target_id, f"{active_role()} · {status}")
+                    st.success("검토 상태를 저장했습니다.")
+            else:
+                st.info(f"현재 {active_role()} 역할에 배정된 검토 요청이 없습니다.")
+        else:
+            st.caption("한국 수출 관리 역할에서는 요청 진행상태를 조회만 할 수 있습니다.")
 
 
 def page_official_data(official: dict[str, Any]) -> None:
@@ -921,24 +1073,37 @@ def page_settings(official: dict[str, Any], api_key: str, model: str) -> None:
 
 initialize_state()
 official_data = load_official_data()
+official_hts_index = load_official_hts_index()
 try:
     gemini_api_key = str(st.secrets.get("GEMINI_API_KEY", ""))
     gemini_model = str(st.secrets.get("GEMINI_MODEL", GEMINI_DEFAULT_MODEL))
-    app_password = str(st.secrets.get("APP_PASSWORD", ""))
 except FileNotFoundError:
-    gemini_api_key, gemini_model, app_password = "", GEMINI_DEFAULT_MODEL, ""
+    gemini_api_key, gemini_model = "", GEMINI_DEFAULT_MODEL
 
-if app_password and not st.session_state.get("authenticated", False):
-    hero("보안 로그인", "허가된 업무 담당자만 통관 사전검토 화면에 접근할 수 있습니다.")
-    with st.form("login-form"):
-        password_input = st.text_input("접근 비밀번호", type="password")
-        submitted = st.form_submit_button("로그인", type="primary", width="stretch")
-    if submitted:
-        if hmac.compare_digest(password_input, app_password):
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("비밀번호가 올바르지 않습니다.")
+if not st.session_state.get("role_authenticated", False):
+    hero("업무 역할로 시작하기", "담당 업무를 선택하면 해당 역할에 필요한 메뉴와 기능만 표시됩니다.")
+    st.markdown('<div class="info-strip"><span>역할별 업무 화면</span><span>버튼을 눌러 바로 시작</span></div>', unsafe_allow_html=True)
+    role_columns = st.columns(3)
+    role_details = {
+        "한국 수출 관리": ("수출", "신고자료 등록, 자동분석 실행, 검토 요청 생성"),
+        "미국 통관": ("통관", "추천 HTS·세율 확정, 검토 상태 및 PSC 처리"),
+        "원산지 검토": ("원산지", "원산지 증빙 검토, 요청 승인·반려"),
+    }
+    for column, role_name in zip(role_columns, ROLES):
+        short_name, description = role_details[role_name]
+        with column:
+            st.markdown(
+                f'<div class="kpi-card"><div class="kpi-label">{escape(short_name)} 업무</div>'
+                f'<div class="kpi-value" style="font-size:1.15rem">{escape(role_name)}</div>'
+                f'<div class="kpi-sub">{escape(description)}</div></div>',
+                unsafe_allow_html=True,
+            )
+            if st.button(f"{role_name} 시작", key=f"role_login_{role_name}", type="primary", width="stretch"):
+                st.session_state.role = role_name
+                st.session_state.role_authenticated = True
+                st.session_state.pop("page_navigation", None)
+                record_audit("역할 시작", role_name, ROLE_SUMMARIES[role_name])
+                st.rerun()
     st.stop()
 
 with st.sidebar:
@@ -953,20 +1118,23 @@ with st.sidebar:
         """,
         unsafe_allow_html=True,
     )
-    role = st.selectbox("업무 역할", ["한국 수출 관리", "미국 통관", "원산지 검토"])
-    st.session_state.role = role
-    st.markdown(f'<div class="side-context"><span>▣&nbsp;&nbsp;{escape(role)}</span><span></span></div>', unsafe_allow_html=True)
+    role = active_role()
+    st.markdown(
+        f'<div class="side-context"><span>▣&nbsp;&nbsp;{escape(role)}</span><span>{escape(ROLE_SUMMARIES[role])}</span></div>',
+        unsafe_allow_html=True,
+    )
     entry_options = [shipment["entryNumber"] for shipment in st.session_state.shipments]
     entry_index = entry_options.index(st.session_state.selected_entry) if st.session_state.selected_entry in entry_options else 0
     st.session_state.selected_entry = st.selectbox("활성 신고서", entry_options, index=entry_index)
-    st.markdown('<div class="nav-kicker">업무 메뉴</div>', unsafe_allow_html=True)
-    page_options = ["대시보드", "통관 신고서", "사전 분석", "관세 영향", "정정 검토", "공식 자료", "AI 도우미", "운영 설정"]
+    page_options = list(pages_for_role(role))
     page_labels = {
         "대시보드":"▦　대시보드", "통관 신고서":"▤　통관 신고서 관리", "사전 분석":"⚡　사전 분석 실행",
         "관세 영향":"◒　관세 영향 시각화", "정정 검토":"✓　정정 검토 요청", "공식 자료":"↗　공지 / 공식 자료",
         "AI 도우미":"✦　AI 관세 도우미", "운영 설정":"⚙　운영 설정",
     }
-    page = st.radio("업무 메뉴", page_options, format_func=lambda value: page_labels[value], label_visibility="collapsed")
+    if st.session_state.get("page_navigation") not in page_options:
+        st.session_state.page_navigation = page_options[0]
+    page = st.radio("업무 메뉴", page_options, format_func=lambda value: page_labels[value], label_visibility="collapsed", key="page_navigation")
     st.divider()
     if gemini_api_key:
         st.markdown(
@@ -976,11 +1144,17 @@ with st.sidebar:
         )
     else:
         st.markdown('<div class="system-box"><div class="system-line"><span>◆ Gemini AI</span><span class="system-chip" style="color:#fbbf24">키 미설정</span></div></div>', unsafe_allow_html=True)
-    if app_password and st.button("로그아웃", width="stretch"):
-        st.session_state.authenticated = False
+    if st.button("역할 변경", width="stretch"):
+        record_audit("역할 종료", role, "역할 선택 화면으로 이동")
+        st.session_state.role_authenticated = False
+        st.session_state.pop("page_navigation", None)
         st.rerun()
 
 topbar(page, role, len(official_data.get("sources", [])))
+
+if not can_access_page(role, page):
+    st.error("현재 역할에서는 이 화면에 접근할 수 없습니다.")
+    st.stop()
 
 pages = {
     "대시보드": page_dashboard,
