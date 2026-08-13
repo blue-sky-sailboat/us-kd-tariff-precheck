@@ -116,7 +116,11 @@ st.markdown(
       .side-context { display:flex; align-items:center; justify-content:space-between; padding:.65rem .7rem;
         background:rgba(30,41,59,.82); border:1px solid rgba(100,116,139,.4); border-radius:.72rem;
         color:#cbd5e1; font-size:.69rem; font-weight:700; }
-      .side-context span:last-child { width:.45rem; height:.45rem; border-radius:99px; background:#38bdf8; box-shadow:0 0 0 4px rgba(56,189,248,.11); }
+      [data-testid="stSidebar"] [data-testid="stMarkdownContainer"]:has(> .side-context) { margin-bottom:0!important; }
+      .side-context span:last-child:empty { flex:0 0 .45rem; width:.45rem; height:.45rem; border-radius:99px; background:#38bdf8; box-shadow:0 0 0 4px rgba(56,189,248,.11); }
+      .side-context:has(span:last-child:not(:empty)) { display:block; }
+      .side-context span:last-child:not(:empty) { display:block; width:auto; height:auto; margin-top:.28rem; color:#94a3b8;
+        background:none; box-shadow:none; font-size:.6rem; font-weight:600; line-height:1.45; overflow-wrap:anywhere; }
       .nav-kicker { margin:.4rem .72rem -.15rem; color:#64748b; font-size:.61rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
       .system-box { margin-top:.15rem; padding:.78rem; border:1px solid rgba(71,85,105,.55); border-radius:.8rem;
         background:rgba(2,6,23,.55); box-shadow:inset 0 1px rgba(255,255,255,.03); }
