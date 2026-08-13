@@ -105,7 +105,7 @@ st.markdown(
       [data-testid="stSidebar"] .stButton > button {
         background:rgba(30,41,59,.84); color:#e2e8f0; border-color:rgba(100,116,139,.55);
       }
-      .brand-shell { position:absolute; top:0; left:0; z-index:200; width:17rem; box-sizing:border-box; margin:0; padding:1.2rem 1rem 1.05rem;
+      .brand-shell { position:absolute; top:-4.85rem; left:0; z-index:200; width:17rem; box-sizing:border-box; margin:0; padding:1.2rem 1rem 1.05rem;
         background:linear-gradient(180deg,#13244d,#0a1128); border-bottom:1px solid rgba(100,116,139,.26); }
       .brand-row { display:flex; gap:.72rem; align-items:center; }
       .brand-mark { width:2.55rem; height:2.55rem; display:flex; align-items:center; justify-content:center;
