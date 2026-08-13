@@ -54,6 +54,7 @@ st.markdown(
       /* Sidebar: original product navigation */
       [data-testid="stSidebar"] {
         width:17rem!important; min-width:17rem!important;
+        position:relative;
         background:linear-gradient(180deg,var(--navy-800) 0,var(--navy-900) 24%,var(--navy-950) 100%);
         border-right:1px solid rgba(148,163,184,.17);
         box-shadow:12px 0 36px rgba(15,23,42,.12);
@@ -61,9 +62,15 @@ st.markdown(
       [data-testid="stSidebar"] > div:first-child { padding-top:0; }
       [data-testid="stSidebarHeader"] { position:absolute; top:.65rem; right:.6rem; width:auto!important; height:0!important; min-height:0!important; padding:0!important; z-index:20; }
       [data-testid="stSidebarHeader"] button { color:white!important; background:rgba(15,23,42,.6)!important; border-radius:.5rem!important; }
+      [data-testid="stSidebarCollapseButton"] { position:absolute!important; top:.65rem!important; right:.55rem!important; left:auto!important; width:2rem!important; height:2rem!important;
+        display:flex!important; align-items:center!important; justify-content:center!important; color:white!important; background:rgba(15,23,42,.78)!important;
+        border:1px solid rgba(148,163,184,.35)!important; border-radius:.55rem!important; z-index:300!important; box-shadow:0 6px 18px rgba(0,0,0,.18)!important; }
+      [data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"],
+      [data-testid="stSidebarCollapseButton"] span { color:white!important; }
       [data-testid="stSidebarCollapsedControl"] { top:.55rem; left:.55rem; z-index:120; }
       [data-testid="stSidebarCollapsedControl"] button { background:white!important; border:1px solid #e2e8f0!important; border-radius:.55rem!important; box-shadow:0 4px 14px rgba(15,23,42,.08)!important; }
-      [data-testid="stSidebarUserContent"] { margin-top:0!important; padding-top:0!important; }
+      [data-testid="stSidebarUserContent"] { margin-top:0!important; padding-top:4.85rem!important; }
+      [data-testid="stSidebarContent"] { overscroll-behavior:contain; }
       [data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:.55rem; }
       [data-testid="stSidebar"] .stMarkdown { color:#e2e8f0; }
       [data-testid="stSidebar"] .stSelectbox label,
@@ -98,7 +105,7 @@ st.markdown(
       [data-testid="stSidebar"] .stButton > button {
         background:rgba(30,41,59,.84); color:#e2e8f0; border-color:rgba(100,116,139,.55);
       }
-      .brand-shell { margin:0 -1rem .35rem; padding:1.2rem 1rem 1.05rem;
+      .brand-shell { position:absolute; top:0; left:0; z-index:200; width:17rem; box-sizing:border-box; margin:0; padding:1.2rem 1rem 1.05rem;
         background:linear-gradient(180deg,#13244d,#0a1128); border-bottom:1px solid rgba(100,116,139,.26); }
       .brand-row { display:flex; gap:.72rem; align-items:center; }
       .brand-mark { width:2.55rem; height:2.55rem; display:flex; align-items:center; justify-content:center;
@@ -214,6 +221,8 @@ st.markdown(
         .shipment-meta { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
       @media (max-width:700px) {
+        [data-testid="stSidebar"] { width:min(17rem,86vw)!important; min-width:min(17rem,86vw)!important; }
+        .brand-shell { width:min(17rem,86vw); }
         .block-container { padding:0 1rem 2rem; }
         .app-topbar { margin:-1rem -1rem 1rem; padding:0 1rem; min-height:3.5rem; }
         .topbar-role { display:none; }
