@@ -31,6 +31,20 @@ import { UserRole, Shipment, HtsItem, Notice, AnalysisRun, ReviewRequest, Copilo
 import { can, canAccessTab } from './roleAccess';
 import { buildAiPrompt, buildGuidedAnswer, getSourceLabels } from './aiAssistant';
 
+const GEMINI_INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta2/interactions';
+const GEMINI_MODEL = 'gemini-3.6-flash';
+
+function getInteractionText(interaction: any): string {
+  if (typeof interaction?.output_text === 'string') return interaction.output_text;
+
+  return (interaction?.steps || [])
+    .filter((step: any) => step?.type === 'model_output')
+    .flatMap((step: any) => step?.content || [])
+    .filter((content: any) => content?.type === 'text' && typeof content.text === 'string')
+    .map((content: any) => content.text)
+    .join('\n');
+}
+
 function MainLayout() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [userRole, setUserRole] = useState<UserRole>(() => {
@@ -173,14 +187,21 @@ function MainLayout() {
         reply = data.reply || '답변을 생성하지 못했습니다.';
         sources = data.sources || sources;
       } else if (personalAiKey) {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(personalAiKey)}`, {
+        const res = await fetch(GEMINI_INTERACTIONS_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: buildAiPrompt(text, assistantContext) }] }] }),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': personalAiKey,
+          },
+          body: JSON.stringify({
+            model: GEMINI_MODEL,
+            input: buildAiPrompt(text, assistantContext),
+            store: false,
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error?.message || '개인 AI 연결을 확인해 주세요.');
-        reply = data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('\n') || '답변을 생성하지 못했습니다.';
+        reply = getInteractionText(data) || '답변을 생성하지 못했습니다.';
       } else {
         reply = buildGuidedAnswer(text, assistantContext);
       }

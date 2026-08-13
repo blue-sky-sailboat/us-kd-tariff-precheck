@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import { readFile, writeFile } from "node:fs/promises";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -10,6 +9,19 @@ dotenv.config();
 const dataDirectory = path.join(process.cwd(), "data");
 const officialDataFile = path.join(dataDirectory, "official-data.json");
 const userStateFile = path.join(dataDirectory, "app-state.json");
+const geminiInteractionsUrl = "https://generativelanguage.googleapis.com/v1beta2/interactions";
+const geminiModel = "gemini-3.6-flash";
+
+function getInteractionText(interaction: any): string {
+  if (typeof interaction?.output_text === "string") return interaction.output_text;
+
+  return (interaction?.steps || [])
+    .filter((step: any) => step?.type === "model_output")
+    .flatMap((step: any) => step?.content || [])
+    .filter((content: any) => content?.type === "text" && typeof content.text === "string")
+    .map((content: any) => content.text)
+    .join("\n");
+}
 
 async function readJson<T>(filePath: string): Promise<T> {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
@@ -37,14 +49,14 @@ async function startServer() {
   app.use(express.json({ limit: "10mb" }));
 
   const apiKey = process.env.GEMINI_API_KEY || "";
-  const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+  const aiConfigured = Boolean(apiKey);
 
   app.get("/api/health", async (_req, res) => {
     try {
       const officialData = await readJson<any>(officialDataFile);
       res.json({
         status: "ok",
-        aiConfigured: !!ai,
+        aiConfigured,
         officialDataLoaded: true,
         htsChangeCount: officialData.dataset?.changeCount ?? 0,
         timestamp: new Date().toISOString(),
@@ -52,7 +64,7 @@ async function startServer() {
     } catch (error: any) {
       res.status(503).json({
         status: "data_unavailable",
-        aiConfigured: !!ai,
+        aiConfigured,
         officialDataLoaded: false,
         error: error?.message || String(error),
       });
@@ -65,7 +77,7 @@ async function startServer() {
         readJson<Record<string, unknown>>(officialDataFile),
         readUserState(),
       ]);
-      res.json({ ...officialData, aiConfigured: !!ai, userState });
+      res.json({ ...officialData, aiConfigured, userState });
     } catch (error: any) {
       res.status(500).json({ error: "공식 자료를 불러오지 못했습니다.", details: error?.message || String(error) });
     }
@@ -94,7 +106,7 @@ async function startServer() {
 
       if (!prompt) return res.status(400).json({ error: "질문을 입력해 주세요." });
       if (prompt.length > 2000) return res.status(400).json({ error: "질문은 2,000자 이내로 입력해 주세요." });
-      if (!ai) {
+      if (!aiConfigured) {
         return res.status(503).json({
           error: "AI 도우미 연결 정보가 설정되지 않았습니다. GEMINI_API_KEY를 설정한 뒤 다시 시도해 주세요.",
         });
@@ -116,13 +128,25 @@ async function startServer() {
 ${sourceSummary}
 `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n질문: ${prompt}` }] }],
+      const googleResponse = await fetch(geminiInteractionsUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          model: geminiModel,
+          input: `${systemInstruction}\n\n질문: ${prompt}`,
+          store: false,
+        }),
       });
+      const interaction = await googleResponse.json() as any;
+      if (!googleResponse.ok) {
+        throw new Error(interaction?.error?.message || `Gemini API request failed (${googleResponse.status})`);
+      }
 
       res.json({
-        reply: response.text || "답변을 생성하지 못했습니다.",
+        reply: getInteractionText(interaction) || "답변을 생성하지 못했습니다.",
         sources: officialData.sources.map((source: any) => `${source.nameKo} — ${source.url}`),
       });
     } catch (error: any) {
