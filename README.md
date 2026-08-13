@@ -1,27 +1,58 @@
-# 미국 KD 수출품목 사전확인 플랫폼
+# 미국 KD 수출품목 사전확인
 
-미국으로 수출하는 KD 품목의 관세 공지, 미국 품목번호(HTS) 변경, 선적별 관세 영향을 한곳에서 확인하는 웹 서비스입니다.
+한국산 KD 자동차 부품의 미국 수입신고 전 HTS 분류, 관세 영향, 정정 검토를 지원하는 Streamlit 앱입니다.
 
-공개 데모: https://blue-sky-sailboat.github.io/us-kd-tariff-precheck/
+## 주요 기능
 
-## 연결된 자료
+- 신고서 및 품목별 HTS 사전검토
+- CSV 신고자료 업로드
+- 신고 관세와 검토 관세 비교
+- PSC 정정 검토 후보 관리
+- 담당자·기한·상태 기반 검토 요청 처리
+- Federal Register 및 USITC 변경자료 조회
+- Gemini Interactions API 기반 관세 도우미
+- 신고서별 CSV 및 Markdown 검토 보고서 다운로드
+- 전체 작업 데이터 JSON 백업·복원과 작업 이력 확인
+- 미분석·판정 근거 누락·중복 신고번호 데이터 품질 점검
+- Streamlit Secrets 기반 선택형 팀 접근 비밀번호
 
-- Federal Register 문서 2025-21940의 제목·게시일·시행일·공식 원문
-- USITC HTS 2025 Revision 31과 Revision 32의 품목번호별 변경 15건
-- CBP 한미 관세 이행 안내의 공식 링크와 사용 목적
-- 사용자가 등록한 선적 CSV와 분석·검토 결과의 서버 저장 파일
+## 로컬 실행
 
-공식 자료 묶음은 `data/official-data.json`에 있으며, `scripts/build_official_data.py`를 실행하면 작업공간의 `03_데이터` 원본에서 다시 생성됩니다.
+Python 3.11 이상 환경에서 다음 명령을 실행합니다.
 
-## 실행 방법
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
 
-1. Node.js에서 `npm install`을 실행합니다.
-2. AI 관세 도우미를 사용하려면 `.env.local`에 `GEMINI_API_KEY`를 설정합니다.
-3. `npm run dev`를 실행합니다.
-4. 브라우저에서 `http://localhost:3000`을 엽니다.
+AI 연결이 필요하면 `.streamlit/secrets.toml.example`을 `.streamlit/secrets.toml`로 복사하고 실제 Gemini API 키를 입력합니다. 실제 키 파일은 Git에 포함되지 않습니다.
 
-## 공개 데모 범위
+```toml
+GEMINI_API_KEY = "실제_API_키"
+GEMINI_MODEL = "gemini-3.6-flash"
+APP_PASSWORD = "선택_접근_비밀번호"
+```
 
-GitHub Pages 버전은 서버 없이 실행되는 정적 데모입니다. 공식 자료와 샘플 선적 데이터는 앱에 포함되어 있으며, 사용자가 변경한 작업 상태는 해당 브라우저에만 저장됩니다. AI 관세 도우미의 실제 API 호출과 서버 공동 저장은 로컬 또는 별도 서버 배포에서만 사용할 수 있습니다.
+## Streamlit Community Cloud 배포
 
-AI 연결 정보가 없으면 임의의 답변을 보여주지 않고 설정이 필요하다고 안내합니다. 미국 세관 시스템(ACE) 제출은 직접 수행하지 않으며, 관세사의 최종 확인과 실제 제출 절차가 필요합니다.
+1. 이 GitHub 저장소의 최신 `main` 브랜치를 사용합니다.
+2. Streamlit Community Cloud에서 **Create app**을 선택합니다.
+3. Repository는 `blue-sky-sailboat/us-kd-tariff-precheck`, Main file path는 `streamlit_app.py`로 지정합니다.
+4. **Advanced settings → Secrets**에 아래 값을 등록합니다.
+
+```toml
+GEMINI_API_KEY = "실제_API_키"
+GEMINI_MODEL = "gemini-3.6-flash"
+APP_PASSWORD = "선택_접근_비밀번호"
+```
+
+5. Deploy를 실행합니다.
+
+API 키는 Streamlit 서버에서만 읽으며 브라우저나 GitHub 저장소에 포함되지 않습니다.
+`APP_PASSWORD`는 선택사항입니다. 값을 등록하면 앱 진입 전에 로그인 화면이 표시됩니다.
+
+## 기존 React 버전
+
+기존 React/Vite 소스는 참고 및 이전 화면 보존을 위해 남겨두었습니다. 새 배포 진입점은 `streamlit_app.py`입니다.
+
+> 이 앱은 사전검토 지원 도구입니다. 최종 품목분류, 관세율 및 신고 판단은 관세사와 미국 통관 담당자의 확인이 필요합니다.
