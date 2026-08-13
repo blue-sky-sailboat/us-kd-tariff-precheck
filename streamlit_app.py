@@ -60,7 +60,7 @@ st.markdown(
       [data-testid="stSidebar"][aria-expanded="true"] { width:17rem!important; min-width:17rem!important; }
       [data-testid="stSidebar"][aria-expanded="false"] { width:0!important; min-width:0!important; flex-basis:0!important; }
       [data-testid="stSidebar"] > div:first-child { padding-top:0; }
-      [data-testid="stSidebarHeader"] { position:absolute; top:.65rem; right:.6rem; width:auto!important; height:0!important; min-height:0!important; padding:0!important; z-index:20; }
+      [data-testid="stSidebarHeader"] { position:absolute; top:.65rem; right:.6rem; width:auto!important; height:0!important; min-height:0!important; padding:0!important; z-index:400; }
       [data-testid="stSidebarHeader"] button { color:white!important; background:rgba(15,23,42,.6)!important; border-radius:.5rem!important; }
       [data-testid="stSidebarCollapseButton"] { position:absolute!important; top:.65rem!important; right:.55rem!important; left:auto!important; width:2rem!important; height:2rem!important;
         display:flex!important; align-items:center!important; justify-content:center!important; color:white!important; background:rgba(15,23,42,.78)!important;
