@@ -48,16 +48,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Banner Notice */}
       <div className="p-5 rounded-2xl bg-gradient-to-r from-[#001E42] via-[#002C5F] to-[#0A192F] text-white shadow-lg border border-cyan-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="inline-flex items-center space-x-2 px-3 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-bold">
-            <ShieldAlert className="w-3.5 h-3.5 text-cyan-400" />
-            <span>미국 공식 관세 공지와 HTS 판본을 기준으로 확인</span>
-          </div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
             미국 KD 수출품목 사전확인 및 관세 영향 분석
           </h1>
-          <p className="text-xs text-slate-300 max-w-2xl leading-relaxed font-normal">
-            수출 선적 전 미국 품목번호(HTS), 추가관세 대상 여부와 신고 내용 수정 필요성을 확인해 통관 지연과 관세 차이를 줄입니다.
-          </p>
         </div>
 
         {userRole === 'kd_manager' && <div className="flex items-center space-x-2 shrink-0">
@@ -120,10 +113,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* KD Export Workflow Pipeline */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs space-y-3">
-        <h3 className="font-bold text-sm text-slate-900 flex items-center justify-between">
-          <span className="text-slate-900 font-black">KD 수출통관 사전확인 업무 흐름</span>
-          <span className="text-xs font-semibold text-slate-400">자료 등록부터 담당자 확인까지</span>
-        </h3>
+        <h3 className="font-black text-sm text-slate-900">업무 흐름</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2">
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-1">

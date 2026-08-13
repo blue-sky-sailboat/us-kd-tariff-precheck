@@ -1,7 +1,6 @@
 import React from 'react';
-import { LogIn, Bell, Sparkles, Globe, Menu } from 'lucide-react';
+import { LogIn, Bell, Sparkles, Menu } from 'lucide-react';
 import { UserRole } from '../types';
-import { ROLE_DEFINITIONS } from '../roleAccess';
 
 interface HeaderProps {
   activeTab: string;
@@ -24,7 +23,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLoginModal,
   onToggleMobileMenu,
 }) => {
-  const roleDefinition = ROLE_DEFINITIONS[userRole];
   const getBreadcrumbTitle = (tab: string) => {
     switch (tab) {
       case 'dashboard':
@@ -66,20 +64,13 @@ export const Header: React.FC<HeaderProps> = ({
           <Menu className="w-5 h-5" />
         </button>
 
-        <span className="text-xs font-semibold text-slate-400 hidden md:inline tracking-wide">
-          미국 KD 세관 사전확인
-        </span>
-        <span className="text-slate-300 hidden md:inline">/</span>
         <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
           {getBreadcrumbTitle(activeTab)}
         </h1>
-        <span className={`hidden md:inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black ${roleDefinition.accent}`}>
-          {roleDefinition.label}
-        </span>
 
         {/* Connected official dataset indicator */}
-        <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
           공식 관세 자료 사용
         </span>
       </div>
@@ -88,7 +79,6 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center space-x-3 sm:space-x-4">
         {/* User Role Switcher */}
         <div className="hidden sm:flex items-center space-x-2 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-          <span className="text-[10px] text-slate-500 font-bold">업무 화면:</span>
           <select
             value={userRole}
             onChange={(e) => setUserRole(e.target.value as UserRole)}
@@ -98,12 +88,6 @@ export const Header: React.FC<HeaderProps> = ({
             <option value="import_filer">미국 통관</option>
             <option value="reviewer">원산지 검토</option>
           </select>
-        </div>
-
-        {/* Language Indicator */}
-        <div className="hidden lg:flex items-center space-x-1 text-xs text-slate-600 font-semibold px-2.5 py-1 bg-slate-100 rounded-md border border-slate-200">
-          <Globe className="w-3.5 h-3.5 text-slate-500" />
-          <span>KR / EN</span>
         </div>
 
         {/* AI Copilot Toggle Button */}

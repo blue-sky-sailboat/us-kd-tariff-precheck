@@ -32,15 +32,6 @@ export const ReviewsView: React.FC<ReviewsViewProps> = ({
           <CheckCircle2 className="w-5 h-5 text-[#002C5F]" />
           <span>검토 및 확인 요청 목록</span>
         </h2>
-        <p className="text-xs text-slate-500 mt-1">
-          수출 담당자, 미국 통관 담당자와 원산지 담당자가 품목번호와 신고 수정 필요사항을 함께 검토합니다.
-        </p>
-      </div>
-
-      <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900">
-        {userRole === 'kd_manager' && '수출 관리 화면: 요청 내용과 진행 상태를 확인합니다. 최종 확인 처리는 미국 통관 또는 원산지 검토 화면에서 진행합니다.'}
-        {userRole === 'import_filer' && '미국 통관 화면: 신고 품목번호와 관세율을 확인하고, 실제 신고 시스템에 사용할 수정 자료의 준비 상태를 관리합니다.'}
-        {userRole === 'reviewer' && '원산지 검토 화면: 원산지 기준과 증빙 내용을 확인한 뒤 승인 또는 재검토 의견을 남깁니다.'}
       </div>
 
       {/* Status Filter Tabs */}

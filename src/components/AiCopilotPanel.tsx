@@ -66,7 +66,7 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
               AI 관세 도우미
             </h3>
             <span className="text-[10px] text-cyan-300 font-mono flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+              <ShieldCheck className="w-3 h-3 text-sky-300" />
               {aiMode === 'guided' ? '자료 분석 모드' : aiMode === 'personal' ? '개인 Gemini 연결됨' : '서버 AI 연결됨'}
             </span>
           </div>
@@ -86,7 +86,7 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
             <p className="text-[11px] font-black text-slate-800">
               {aiMode === 'guided' ? '생성형 AI를 연결하면 자유 질문이 가능합니다.' : '생성형 AI 사용 가능'}
             </p>
-            <p className="text-[9px] text-slate-500">키는 이 브라우저 탭에만 보관되며 저장소에 업로드되지 않습니다.</p>
+            <p className="text-[9px] text-slate-500">현재 브라우저 탭에서만 사용</p>
           </div>
           {aiMode === 'personal' ? (
             <button onClick={onDisconnectPersonalAi} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold text-rose-700">

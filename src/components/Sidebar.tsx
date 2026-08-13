@@ -99,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {roleDefinition.label}
           </span>
         </div>
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+        <span className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
       </div>
 
       {/* Navigation List */}
@@ -146,11 +146,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {officialData ? `${officialData.sources.length}개 연결` : '확인 중'}
           </span>
         </div>
-        <p className="text-[10px] text-slate-400 leading-tight">
-          {officialData
-            ? `${officialData.dataset.previousVersion}·${officialData.dataset.currentVersion} 비교 완료`
-            : '관세 공지와 품목번호 자료를 불러오고 있습니다.'}
-        </p>
       </div>
     </aside>
   );

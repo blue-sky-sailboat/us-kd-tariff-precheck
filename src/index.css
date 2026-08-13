@@ -1,1 +1,98 @@
 @import "tailwindcss";
+
+:root {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", "Segoe UI", Arial, sans-serif;
+  color: #172554;
+  background: #f8fafc;
+  font-synthesis: none;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Data labels use the same typeface as the rest of the product. */
+.font-mono {
+  font-family: inherit !important;
+  letter-spacing: normal !important;
+}
+
+/* One blue family, with shade changes carrying status meaning. */
+[class*="bg-emerald-"],
+[class*="bg-green-"] {
+  background-color: #f0f9ff !important;
+}
+
+[class*="text-emerald-"],
+[class*="text-green-"] {
+  color: #0369a1 !important;
+}
+
+[class*="border-emerald-"],
+[class*="border-green-"] {
+  border-color: #bae6fd !important;
+}
+
+[class*="bg-amber-"],
+[class*="bg-yellow-"],
+[class*="bg-orange-"] {
+  background-color: #eff6ff !important;
+}
+
+[class*="text-amber-"],
+[class*="text-yellow-"],
+[class*="text-orange-"] {
+  color: #1d4ed8 !important;
+}
+
+[class*="border-amber-"],
+[class*="border-yellow-"],
+[class*="border-orange-"] {
+  border-color: #bfdbfe !important;
+}
+
+[class*="bg-rose-"],
+[class*="bg-red-"] {
+  background-color: #dbeafe !important;
+}
+
+[class*="text-rose-"],
+[class*="text-red-"] {
+  color: #1e3a8a !important;
+}
+
+[class*="border-rose-"],
+[class*="border-red-"] {
+  border-color: #93c5fd !important;
+}
+
+[class*="bg-violet-"],
+[class*="bg-purple-"] {
+  background-color: #e0f2fe !important;
+}
+
+[class*="text-violet-"],
+[class*="text-purple-"] {
+  color: #1e40af !important;
+}
+
+[class*="border-violet-"],
+[class*="border-purple-"] {
+  border-color: #7dd3fc !important;
+}
+
+[class*="bg-emerald-600"],
+[class*="bg-emerald-700"],
+[class*="bg-green-600"],
+[class*="bg-green-700"] {
+  background-color: #2563eb !important;
+}
+
+[class*="bg-rose-500"],
+[class*="bg-red-500"] {
+  background-color: #1d4ed8 !important;
+}

@@ -395,7 +395,7 @@ export const initialCopilotMessages: CopilotMessage[] = [
   {
     id: 'msg-1',
     sender: 'assistant',
-    text: '안녕하세요. 미국 수출품목 관세 도우미입니다.\n\n연결된 공식 공지와 미국 관세율표, 현재 선택한 선적 정보를 바탕으로 확인할 사실과 다음 조치를 정리해 드립니다. 품목번호, 관세율 또는 신고 수정 절차에 대해 질문해 주세요.',
+    text: '품목번호, 관세율, 추가관세 또는 신고 정정 절차를 질문해 주세요.',
     timestamp: '19:30',
     suggestedActions: [
       { label: 'DEMO-ENTRY-001 오분류 원인 분석', action: 'analyze_shipment_101' },

@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { AiCopilotPanel } from './components/AiCopilotPanel';
-import { RoleWorkspaceBanner } from './components/RoleWorkspaceBanner';
 
 // Views
 import { DashboardView } from './components/views/DashboardView';
@@ -314,7 +313,6 @@ function MainLayout() {
 
         <main className={`flex-1 p-6 lg:p-8 overflow-y-auto transition-all ${copilotOpen ? 'mr-0 lg:mr-96' : ''}`}>
           <div className="max-w-7xl mx-auto">
-            <RoleWorkspaceBanner role={userRole} />
             {activeTab === 'dashboard' && (
               <DashboardView
                 shipments={shipments}
