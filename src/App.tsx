@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { AiCopilotPanel } from './components/AiCopilotPanel';
+import { RoleWorkspaceBanner } from './components/RoleWorkspaceBanner';
 
 // Views
 import { DashboardView } from './components/views/DashboardView';
@@ -28,6 +29,8 @@ import {
 import bundledOfficialData from '../data/official-data.json';
 
 import { UserRole, Shipment, HtsItem, Notice, AnalysisRun, ReviewRequest, CopilotMessage, LineItem, OfficialData } from './types';
+import { can, canAccessTab } from './roleAccess';
+import { buildAiPrompt, buildGuidedAnswer, getSourceLabels } from './aiAssistant';
 
 function MainLayout() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -38,6 +41,7 @@ function MainLayout() {
   const [copilotOpen, setCopilotOpen] = useState<boolean>(true);
   const [loginModalOpen, setLoginModalOpen] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [personalAiKey, setPersonalAiKey] = useState(() => window.sessionStorage.getItem('gemini-api-key') || '');
 
   // Data State
   const [htsItems, setHtsItems] = useState<HtsItem[]>(initialHtsItems);
@@ -56,7 +60,12 @@ function MainLayout() {
 
   useEffect(() => {
     window.localStorage.setItem('work-view', userRole);
+    if (!canAccessTab(userRole, activeTab)) setActiveTab('dashboard');
   }, [userRole]);
+
+  const navigateTo = (tab: string) => {
+    setActiveTab(canAccessTab(userRole, tab) ? tab : 'dashboard');
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -149,40 +158,40 @@ function MainLayout() {
 
     setCopilotMessages(prev => [...prev, userMsg]);
 
-    if (!apiAvailableRef.current) {
-      const demoReply: CopilotMessage = {
-        id: `msg-demo-${Date.now()}`,
-        sender: 'assistant',
-        text: `공개 데모에서는 서버 AI 연결 없이 화면 기능을 체험할 수 있습니다. “${text}” 질문은 실제 운영 환경에서 공식 자료와 선택한 선적 정보를 바탕으로 답변합니다.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setCopilotMessages(prev => [...prev, demoReply]);
-      return;
-    }
-
     try {
-      const res = await fetch('/api/genai/copilot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: text,
-          context: {
-            screenName: activeTab,
-            userRole,
-            shipment: selectedShipment,
-          },
-        }),
-      });
+      const assistantContext = { role: userRole, screenName: activeTab, shipment: selectedShipment, officialData };
+      let reply = '';
+      let sources = getSourceLabels(officialData);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'AI 도우미 요청을 처리하지 못했습니다.');
+      if (apiAvailableRef.current) {
+        const res = await fetch('/api/genai/copilot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: text, context: assistantContext }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'AI 도우미 요청을 처리하지 못했습니다.');
+        reply = data.reply || '답변을 생성하지 못했습니다.';
+        sources = data.sources || sources;
+      } else if (personalAiKey) {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(personalAiKey)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: buildAiPrompt(text, assistantContext) }] }] }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || '개인 AI 연결을 확인해 주세요.');
+        reply = data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('\n') || '답변을 생성하지 못했습니다.';
+      } else {
+        reply = buildGuidedAnswer(text, assistantContext);
+      }
 
       const aiReply: CopilotMessage = {
         id: `msg-ai-${Date.now()}`,
         sender: 'assistant',
-        text: data.reply || '답변을 생성하지 못했습니다.',
+        text: reply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        sources: data.sources,
+        sources,
       };
 
       setCopilotMessages(prev => [...prev, aiReply]);
@@ -200,6 +209,7 @@ function MainLayout() {
 
   // Run Analysis Handler
   const handleRunAnalysis = (shipmentId: string, confidenceThreshold: number) => {
+    if (!can(userRole, 'runAnalysis')) return;
     const shipment = shipments.find(s => s.id === shipmentId);
     if (!shipment) return;
 
@@ -243,7 +253,7 @@ function MainLayout() {
 
   // Handle Review Request Creation (SCR-10)
   const handleRequestReview = (item: LineItem, reason: string) => {
-    if (!selectedShipment) return;
+    if (!selectedShipment || !can(userRole, 'requestReview')) return;
 
     const newReview: ReviewRequest = {
       id: `rev-${Math.floor(100 + Math.random() * 900)}`,
@@ -265,6 +275,8 @@ function MainLayout() {
 
   // Handle Review Status Updates
   const handleUpdateReviewStatus = (reviewId: string, newStatus: 'approved' | 'rejected' | 'psc_filed', comment?: string) => {
+    if (!can(userRole, 'resolveReview')) return;
+    if (newStatus === 'psc_filed' && !can(userRole, 'completePsc')) return;
     setReviews(prev =>
       prev.map(r =>
         r.id === reviewId
@@ -279,7 +291,7 @@ function MainLayout() {
       {/* Left Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigateTo}
         userRole={userRole}
         pendingReviewsCount={reviews.filter(r => r.status === 'pending').length}
         isMobileOpen={mobileMenuOpen}
@@ -302,11 +314,13 @@ function MainLayout() {
 
         <main className={`flex-1 p-6 lg:p-8 overflow-y-auto transition-all ${copilotOpen ? 'mr-0 lg:mr-96' : ''}`}>
           <div className="max-w-7xl mx-auto">
+            <RoleWorkspaceBanner role={userRole} />
             {activeTab === 'dashboard' && (
               <DashboardView
                 shipments={shipments}
                 runs={runs}
-                onNavigate={setActiveTab}
+                userRole={userRole}
+                onNavigate={navigateTo}
                 onSelectShipment={(s) => {
                   setSelectedShipment(s);
                   const matchingRun = runs.find(r => r.shipmentId === s.id);
@@ -324,6 +338,7 @@ function MainLayout() {
                 htsItems={htsItems}
                 officialData={officialData}
                 onAddHtsItem={(newItem) => {
+                  if (!can(userRole, 'manageHts')) return;
                   const created: HtsItem = {
                     ...newItem,
                     id: `hts-${Date.now()}`,
@@ -331,6 +346,7 @@ function MainLayout() {
                   };
                   setHtsItems(prev => [created, ...prev]);
                 }}
+                readOnly={!can(userRole, 'manageHts')}
               />
             )}
 
@@ -342,11 +358,13 @@ function MainLayout() {
                   const matchingRun = runs.find(r => r.shipmentId === s.id);
                   if (matchingRun) setSelectedRun(matchingRun);
                 }}
-                onNavigate={setActiveTab}
+                onNavigate={navigateTo}
                 onAddNewShipment={(s) => {
+                  if (!can(userRole, 'upload')) return;
                   setShipments(prev => [s, ...prev]);
                   setSelectedShipment(s);
                 }}
+                canUpload={can(userRole, 'upload')}
               />
             )}
 
@@ -354,7 +372,7 @@ function MainLayout() {
               <AnalysisRunView
                 shipments={shipments}
                 onRunAnalysis={handleRunAnalysis}
-                onNavigate={setActiveTab}
+                onNavigate={navigateTo}
               />
             )}
 
@@ -366,7 +384,7 @@ function MainLayout() {
                   setSelectedRun(run);
                   const s = shipments.find(sh => sh.id === run.shipmentId);
                   if (s) setSelectedShipment(s);
-                  setActiveTab('result_detail');
+                  navigateTo('result_detail');
                 }}
               />
             )}
@@ -375,9 +393,10 @@ function MainLayout() {
               <ResultDetailView
                 run={selectedRun}
                 shipment={selectedShipment}
-                onBack={() => setActiveTab('results')}
+                onBack={() => navigateTo('results')}
                 onRequestReview={handleRequestReview}
-                onNavigate={setActiveTab}
+                onNavigate={navigateTo}
+                canRequestReview={can(userRole, 'requestReview')}
               />
             )}
 
@@ -414,6 +433,15 @@ function MainLayout() {
         onClose={() => setCopilotOpen(false)}
         messages={copilotMessages}
         onSendMessage={handleSendCopilotMessage}
+        aiMode={apiAvailableRef.current ? 'server' : personalAiKey ? 'personal' : 'guided'}
+        onConnectPersonalAi={(apiKey) => {
+          window.sessionStorage.setItem('gemini-api-key', apiKey);
+          setPersonalAiKey(apiKey);
+        }}
+        onDisconnectPersonalAi={() => {
+          window.sessionStorage.removeItem('gemini-api-key');
+          setPersonalAiKey('');
+        }}
         activeContext={{
           screenName: activeTab,
           shipment: selectedShipment,

@@ -5,12 +5,14 @@ import { Search, Plus, ShieldAlert, X, Database } from 'lucide-react';
 interface HtsManagementViewProps {
   htsItems: HtsItem[];
   onAddHtsItem: (item: Omit<HtsItem, 'id' | 'updatedAt'>) => void;
+  readOnly?: boolean;
   officialData: OfficialData | null;
 }
 
 export const HtsManagementView: React.FC<HtsManagementViewProps> = ({
   htsItems,
   onAddHtsItem,
+  readOnly = false,
   officialData,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,13 +83,13 @@ export const HtsManagementView: React.FC<HtsManagementViewProps> = ({
             />
           </div>
 
-          <button
+          {!readOnly ? <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#002C5F] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-2xs transition-all shrink-0 border border-cyan-400/30"
           >
             <Plus className="w-4 h-4" />
             <span>신규 HTS 등록</span>
-          </button>
+          </button> : <span className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-bold text-violet-800">기준 조회 전용</span>}
         </div>
       </div>
 

@@ -7,6 +7,7 @@ interface ShipmentsViewProps {
   onSelectShipment: (shipment: Shipment) => void;
   onNavigate: (tab: string) => void;
   onAddNewShipment: (shipment: Shipment) => void;
+  canUpload?: boolean;
 }
 
 export const ShipmentsView: React.FC<ShipmentsViewProps> = ({
@@ -14,6 +15,7 @@ export const ShipmentsView: React.FC<ShipmentsViewProps> = ({
   onSelectShipment,
   onNavigate,
   onAddNewShipment,
+  canUpload = true,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -98,18 +100,18 @@ export const ShipmentsView: React.FC<ShipmentsViewProps> = ({
           </p>
         </div>
 
-        <button
+        {canUpload ? <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           className="flex items-center space-x-1.5 px-4 py-2 bg-[#002C5F] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-2xs transition-all disabled:opacity-50 shrink-0 border border-cyan-400/30"
         >
           <Plus className="w-4 h-4" />
           <span>{uploading ? '파일을 읽는 중...' : 'CSV 파일 선택'}</span>
-        </button>
+        </button> : <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">조회·검증 전용</span>}
       </div>
 
       {/* Drag & Drop Upload Zone */}
-      <div
+      {canUpload && <div
         onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setIsDragOver(false); handleFile(e.dataTransfer.files[0]); }}
@@ -138,7 +140,7 @@ export const ShipmentsView: React.FC<ShipmentsViewProps> = ({
             내 컴퓨터에서 파일 찾기
           </button>
           <a
-            href="/선적자료_등록양식.csv"
+            href="./선적자료_등록양식.csv"
             download
             onClick={(event) => event.stopPropagation()}
             className="ml-2 px-4 py-1.5 bg-white hover:bg-slate-50 text-slate-600 font-bold text-xs rounded-xl border border-slate-300 transition-colors inline-block"
@@ -146,9 +148,9 @@ export const ShipmentsView: React.FC<ShipmentsViewProps> = ({
             등록 양식 받기
           </a>
         </div>
-      </div>
+      </div>}
 
-      <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => handleFile(event.target.files?.[0])} />
+      {canUpload && <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => handleFile(event.target.files?.[0])} />}
       {uploadMessage && <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-900">{uploadMessage}</div>}
 
       {/* Shipments Master Table */}

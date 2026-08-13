@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { OfficialData, UserRole } from '../types';
+import { ROLE_DEFINITIONS } from '../roleAccess';
 
 interface SidebarProps {
   activeTab: string;
@@ -35,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
   officialData,
 }) => {
-  const menuItems = [
+  const allMenuItems = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
     { id: 'notices', label: '공지 / 자료실', icon: FileText },
     { id: 'hts', label: 'HTS 품목 관리', icon: Search },
@@ -52,6 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'impact', label: '관세 영향 시각화', icon: PieChart },
     { id: 'settings', label: '설정', icon: Settings },
   ];
+  const roleDefinition = ROLE_DEFINITIONS[userRole];
+  const menuItems = allMenuItems.filter(item => roleDefinition.tabs.includes(item.id));
 
   const handleSelectTab = (tabId: string) => {
     setActiveTab(tabId);
@@ -93,9 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center space-x-2 truncate">
           <Building2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
           <span className="text-slate-200 font-medium truncate">
-            {userRole === 'kd_manager' && '수출 관리 화면'}
-            {userRole === 'import_filer' && '미국 통관 화면'}
-            {userRole === 'reviewer' && '원산지 검토 화면'}
+            {roleDefinition.label}
           </span>
         </div>
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
@@ -104,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Navigation List */}
       <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto custom-scrollbar">
         <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-          수출·관세 업무 메뉴
+          {roleDefinition.shortLabel} 전용 메뉴
         </p>
 
         {menuItems.map((item) => {

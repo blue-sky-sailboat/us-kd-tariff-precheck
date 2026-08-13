@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, X, Send, BookOpen, ShieldCheck, RefreshCw, MessageSquare } from 'lucide-react';
+import { Sparkles, X, Send, BookOpen, ShieldCheck, RefreshCw, MessageSquare, KeyRound, Trash2 } from 'lucide-react';
 import { CopilotMessage, Shipment, HtsItem } from '../types';
 
 interface AiCopilotPanelProps {
@@ -7,6 +7,9 @@ interface AiCopilotPanelProps {
   onClose: () => void;
   messages: CopilotMessage[];
   onSendMessage: (text: string) => void | Promise<void>;
+  aiMode: 'server' | 'personal' | 'guided';
+  onConnectPersonalAi: (apiKey: string) => void;
+  onDisconnectPersonalAi: () => void;
   activeContext?: {
     screenName: string;
     shipment?: Shipment | null;
@@ -19,10 +22,15 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
   onClose,
   messages,
   onSendMessage,
+  aiMode,
+  onConnectPersonalAi,
+  onDisconnectPersonalAi,
   activeContext,
 }) => {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showConnection, setShowConnection] = useState(false);
+  const [apiKey, setApiKey] = useState('');
 
   if (!isOpen) return null;
 
@@ -58,7 +66,8 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
               AI 관세 도우미
             </h3>
             <span className="text-[10px] text-cyan-300 font-mono flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-400" /> 공식 관세 자료 참고
+              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+              {aiMode === 'guided' ? '자료 분석 모드' : aiMode === 'personal' ? '개인 Gemini 연결됨' : '서버 AI 연결됨'}
             </span>
           </div>
         </div>
@@ -69,6 +78,32 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
         >
           <X className="w-5 h-5" />
         </button>
+      </div>
+
+      <div className="border-b border-slate-200 bg-white px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-black text-slate-800">
+              {aiMode === 'guided' ? '생성형 AI를 연결하면 자유 질문이 가능합니다.' : '생성형 AI 사용 가능'}
+            </p>
+            <p className="text-[9px] text-slate-500">키는 이 브라우저 탭에만 보관되며 저장소에 업로드되지 않습니다.</p>
+          </div>
+          {aiMode === 'personal' ? (
+            <button onClick={onDisconnectPersonalAi} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold text-rose-700">
+              <Trash2 className="h-3 w-3" /> 연결 해제
+            </button>
+          ) : aiMode === 'guided' ? (
+            <button onClick={() => setShowConnection(value => !value)} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#002C5F] px-2.5 py-1.5 text-[10px] font-bold text-white">
+              <KeyRound className="h-3 w-3" /> 개인 AI 연결
+            </button>
+          ) : null}
+        </div>
+        {showConnection && aiMode === 'guided' && (
+          <form className="mt-2 flex gap-2" onSubmit={(event) => { event.preventDefault(); if (!apiKey.trim()) return; onConnectPersonalAi(apiKey.trim()); setApiKey(''); setShowConnection(false); }}>
+            <input type="password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder="Gemini API 키 입력" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-[11px] focus:border-cyan-500 focus:outline-none" />
+            <button type="submit" disabled={!apiKey.trim()} className="rounded-lg bg-cyan-600 px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-40">연결</button>
+          </form>
+        )}
       </div>
 
       {/* Screen Context Banner */}

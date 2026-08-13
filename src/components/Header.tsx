@@ -1,6 +1,7 @@
 import React from 'react';
 import { LogIn, Bell, Sparkles, Globe, Menu } from 'lucide-react';
 import { UserRole } from '../types';
+import { ROLE_DEFINITIONS } from '../roleAccess';
 
 interface HeaderProps {
   activeTab: string;
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLoginModal,
   onToggleMobileMenu,
 }) => {
+  const roleDefinition = ROLE_DEFINITIONS[userRole];
   const getBreadcrumbTitle = (tab: string) => {
     switch (tab) {
       case 'dashboard':
@@ -71,6 +73,9 @@ export const Header: React.FC<HeaderProps> = ({
         <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
           {getBreadcrumbTitle(activeTab)}
         </h1>
+        <span className={`hidden md:inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black ${roleDefinition.accent}`}>
+          {roleDefinition.label}
+        </span>
 
         {/* Connected official dataset indicator */}
         <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">

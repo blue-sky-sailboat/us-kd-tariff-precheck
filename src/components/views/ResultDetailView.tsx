@@ -8,6 +8,7 @@ interface ResultDetailViewProps {
   onBack: () => void;
   onRequestReview: (item: LineItem, reason: string) => void;
   onNavigate: (tab: string) => void;
+  canRequestReview?: boolean;
 }
 
 export const ResultDetailView: React.FC<ResultDetailViewProps> = ({
@@ -16,6 +17,7 @@ export const ResultDetailView: React.FC<ResultDetailViewProps> = ({
   onBack,
   onRequestReview,
   onNavigate,
+  canRequestReview = true,
 }) => {
   const [selectedItem, setSelectedItem] = useState<LineItem | null>(
     shipment?.items[1] || shipment?.items[0] || null
@@ -215,7 +217,7 @@ export const ResultDetailView: React.FC<ResultDetailViewProps> = ({
               </div>
 
               {/* Request Review Form (SCR-10) */}
-              <div className="pt-2 border-t border-slate-100 space-y-3">
+              {canRequestReview ? <div className="pt-2 border-t border-slate-100 space-y-3">
                 <h4 className="font-bold text-xs text-slate-900">
                   수입전담자 / 검토자 정정 검토 요청
                 </h4>
@@ -244,7 +246,7 @@ export const ResultDetailView: React.FC<ResultDetailViewProps> = ({
                     </>
                   )}
                 </button>
-              </div>
+              </div> : <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] font-semibold text-slate-600">현재 역할은 분석 근거를 조회할 수 있지만 새 정정 검토 요청을 만들 수 없습니다.</div>}
             </div>
           ) : (
             <p className="text-xs text-slate-500 font-mono text-center py-8">

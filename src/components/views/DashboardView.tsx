@@ -1,5 +1,6 @@
 import React from 'react';
-import { Shipment, AnalysisRun, RiskLevel } from '../../types';
+import { Shipment, AnalysisRun, RiskLevel, UserRole } from '../../types';
+import { canAccessTab } from '../../roleAccess';
 import { AlertTriangle, CheckCircle2, ShieldAlert, ArrowRight, Zap, FileText, UploadCloud, Search, Activity } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -7,6 +8,7 @@ interface DashboardViewProps {
   runs: AnalysisRun[];
   onNavigate: (tab: string) => void;
   onSelectShipment: (shipment: Shipment) => void;
+  userRole: UserRole;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -14,6 +16,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   runs,
   onNavigate,
   onSelectShipment,
+  userRole,
 }) => {
   const totalShipments = shipments.length;
   const highRiskCount = shipments.filter(s => s.riskLevel === 'high' || s.riskLevel === 'critical').length;
@@ -57,7 +60,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 shrink-0">
+        {userRole === 'kd_manager' && <div className="flex items-center space-x-2 shrink-0">
           <button
             onClick={() => onNavigate('analysis')}
             className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md transition-all border border-cyan-300/30"
@@ -65,7 +68,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Zap className="w-4 h-4 text-cyan-200" />
             <span>사전 분석 실행</span>
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* KPI Cards Grid */}
@@ -222,7 +225,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs space-y-3">
             <h3 className="font-bold text-sm text-slate-900">빠른 실행 메뉴</h3>
             <div className="grid grid-cols-1 gap-2">
-              <button
+              {userRole === 'kd_manager' && <button
                 onClick={() => onNavigate('shipments')}
                 className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-cyan-50/50 border border-slate-200 hover:border-cyan-300 rounded-xl transition-all text-xs font-bold text-slate-800"
               >
@@ -231,9 +234,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span>신고서 파일 업로드</span>
                 </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+              </button>}
 
-              <button
+              {canAccessTab(userRole, 'hts') && <button
                 onClick={() => onNavigate('hts')}
                 className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-cyan-50/50 border border-slate-200 hover:border-cyan-300 rounded-xl transition-all text-xs font-bold text-slate-800"
               >
@@ -242,9 +245,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span>HTS 관세율 10자리 검색</span>
                 </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+              </button>}
 
-              <button
+              {canAccessTab(userRole, 'impact') && <button
                 onClick={() => onNavigate('impact')}
                 className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-cyan-50/50 border border-slate-200 hover:border-cyan-300 rounded-xl transition-all text-xs font-bold text-slate-800"
               >
@@ -253,7 +256,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span>관세 인상 영향 시각화</span>
                 </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+              </button>}
+
+              {canAccessTab(userRole, 'reviews') && userRole !== 'kd_manager' && <button
+                onClick={() => onNavigate('reviews')}
+                className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-cyan-50/50 border border-slate-200 hover:border-cyan-300 rounded-xl transition-all text-xs font-bold text-slate-800"
+              >
+                <div className="flex items-center space-x-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#002C5F]" />
+                  <span>{userRole === 'import_filer' ? '통관 검토 요청 처리' : '원산지·품목 검토 처리'}</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+              </button>}
             </div>
           </div>
 
